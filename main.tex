@@ -446,6 +446,7 @@
 	Cookies may not reach destination. 
 	Can be dropped by middleboxes, also timeouts can occur.
 	Cookies can be stolen \( \rightarrow \) Rediraction attacks 
+	Cookies are dependent on the IP address of the client \( \rightarrow \) change in networks invalidates the cookie, so mobile usage is not optimal
 
 	TCP fast open is not used today, as it leads to more problems than it solves.
 	It also has significant problems with middleboxes.
@@ -480,12 +481,68 @@
 		\item Sequence number 
 		\item ACK number
 	\end{itemize}
-	They especially can remove the \texttt{MP\_CAPABLE}-flag, which leads to unsuccessful connection establishment \( \rightarrow \) normal TCP connection established.
+	They especially can remove the \texttt{MP\_CAPABLE} flag, which leads to unsuccessful connection establishment \( \rightarrow \) normal TCP connection established.
 
 	Also, non-sequential ACKs (when only looking at one path) may be dropped.
-
+	
 	Middleboxes may also change all other possible fields, but those changes are not common.
+		
+	\section{Design Patterns}
+	\label{design-patterns}
 	
-	
+	This chapter describes, how to design networking protocols properly, such that they can be extended and worked with nicely. 
 
- \end{document}
+	General design principles are
+	\begin{itemize}
+		\item Simplicity
+		\item Modularity
+		\item Well-foremdness
+		\item Robustness
+		\item Consistency
+	\end{itemize}
+
+	These lead to the 10 rules of design.
+
+	\begin{defi}{10 rules of design}
+		There are 10 rules, that every desing process regarding protocols must follow.
+		\tcblower
+		\begin{enumerate}
+			\item Define the problem well
+			\item Define the service first
+			\item Design external functionality first, then internal
+			\item Keep it simple
+			\item Do not connect what's independent
+			\item Don't impose irrelevant restrictions
+			\item Build high level prototyp and validate first
+			\item Implement, evaluate and \textbf{optimize} the design
+			\item Check equivalence of prototyp and implementation
+			\item Don't skip 1-7
+		\end{enumerate}
+	\end{defi}
+	
+	\subsection{Layering}
+	\label{ss-layering}
+
+	Layering describes a modular structure of a protocol, each layer being responsible for a distinct task.
+
+	\begin{halfboxl}
+		\textbf{Advantages}
+		\begin{itemize}
+			\item Smaller subproblems to handle on each layer
+			\item Implementation as modules
+			\item Exchangeable modules
+			\item Reusable modules
+		\end{itemize}
+	\end{halfboxl}%	
+ 	\begin{halfboxr}
+		\vspace{-\baselineskip}
+ 		\textbf{Disadvantages}
+		\begin{itemize}
+			\item Information is hidden \( \rightarrow \) performance loss
+			\item Redundantly implemented functionality on different layers
+		\end{itemize}
+ 	\end{halfboxr}
+
+	\textit{Cross-layer communication} can help with redundancy, but is not common, as it is hard to change. 
+
+\end{document}
