@@ -103,10 +103,11 @@
 		\item \fkt{bind}
 	\end{enumerate}
 
-	\begin{figure}[h]
+	\begin{figure}[H]
 		\centering
 		\includegraphics[width=\textwidth]{img/1-getaddrinfo-usage.png}
 		\caption{How to use \fkt{getaddrinfo}. Note: All information used should originate in one block, not two as shown above.}
+		\label{img-1-getaddrinfo-usage}
 	\end{figure}	
 	
 	\subsubsection{Server-side programming}
@@ -238,7 +239,7 @@
 	There are several methods for closing a connection, each to be used in a different scenario.
 
 	\begin{defi}{\fkt{close}}
-		Drops all pakets queued for receiving and sending, and shuts down everything else related to the socket.
+		Drops all pakets queued for receiving and sending, and shuts down everything else related to the socket. Also frees all previously allocated space.
 		\begin{lstlisting}[language=C]
 			int close(int sockfd);
 		\end{lstlisting}
@@ -272,6 +273,7 @@
 		\centering
 		\includegraphics[width=\textwidth]{img/1-connection-overview.png}
 		\caption{Overview over the course of a connection-aware socket}
+		\label{img-1-connection-overview}
 	\end{figure}
 
 	\subsubsection{Configuring a socket}
@@ -348,6 +350,7 @@
 		\centering
 		\includegraphics[width=\textwidth]{img/1-epoll-vs-select.png}
 		\caption{Performance of \texttt{epoll} vs. \fkt{select}}
+		\label{img-1-epoll-vs-select}
 	\end{figure}
 
 	\subsection{TCP options and packetization}
@@ -424,13 +427,65 @@
 	Also problem with duplicated data. This also makes the above attacks easier.
 
 	\textbf{Avoiding those problems:}\\
+	What to do to tackle the problems
 	\begin{itemize}
 		\item Keep verified hosts on a \textit{secure} whitelist
 		\item Only trust peers that completed a handshake – this needs a proof
 		\item Application must tolerated duplicated \texttt{SYN} data
 	\end{itemize}
 
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.65\textwidth]{img/1-tcp-fastopen-proof.png}
+		\caption{Using cookie as proof of validity of connection}
+		\label{img-1-tcp-fastopen-proof}
+	\end{figure}
 
+	Cookies are not valid forever. If cookie is invalid continue with normal TCP handshake.
+	
+	Cookies may not reach destination. 
+	Can be dropped by middleboxes, also timeouts can occur.
+	Cookies can be stolen \( \rightarrow \) Rediraction attacks 
 
+	TCP fast open is not used today, as it leads to more problems than it solves.
+	It also has significant problems with middleboxes.
+
+	Activating TCP fast open on servers using \fkt{setsockopts} with \texttt{TCP\_FASTOPEN} together with a maximum count of connections.
+
+	Activating TCP fast open for clients by piggybacking data to the connect call. 
+	Also need to use \texttt{MSG\_FASTOPEN}.
+
+	\subsubsection{Multipass TCP}
+	\label{multipass-tcp}
+
+	Enable multiple connections between clients and servers. 
+	This enables for some backup paths, if one connection suddenly fails.
+	However, TCP is \textit{single-path} only, meaning there can only be one connection per socket.
+	This leads to poor performance for mobile users, if, for example, if you change from WiFi to 4G networks.
+
+	How to use multi-path TCP:
+	\begin{enumerate}
+		\item Send options \texttt{MP\_CAPABLE} with \texttt{SYN} message to signal multi-path capability.
+		\item If servers sends the same option back, both parties know, that the other party supports 
+		\item Send specific \texttt{JOIN} with another \texttt{SYN} message to server, signalling to which connection to join the incoming one to.
+	\end{enumerate}
+
+	Again, there are problems with middle boxes.
+	Middleboxes (esp. NAT) may \textbf{change} the following field in the IP header.
+	\begin{itemize}
+		\item IP source address
+		\item IP destination address
+		\item Source port
+		\item Destination port
+		\item Sequence number 
+		\item ACK number
+	\end{itemize}
+	They especially can remove the \texttt{MP\_CAPABLE}-flag, which leads to unsuccessful connection establishment \( \rightarrow \) normal TCP connection established.
+
+	Also, non-sequential ACKs (when only looking at one path) may be dropped.
+
+	Middleboxes may also change all other possible fields, but those changes are not common.
+	
+	
 
  \end{document}
