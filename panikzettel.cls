@@ -144,8 +144,8 @@
 \begin{tcolorbox}[colback=skyblue!5!white, colframe=skyblue!75!black, title={\sffamily Definition: #1}]
 }{%
 \end{tcolorbox}}
-\newenvironment{alertbox}[1]{%
-\begin{tcolorbox}[colback=reddishpurple!5!white, colframe=reddishpurple!75!black, title={\sffamily Important: #1}]
+\newenvironment{alertbox}{%
+\begin{tcolorbox}[colback=red!15!white, colframe=red!75!black, title={\sffamily Important}]
 }{%
 \end{tcolorbox}}
 

@@ -493,13 +493,13 @@
 	This chapter describes, how to design networking protocols properly, such that they can be extended and worked with nicely. 
 
 	General design principles are
-	\begin{itemize}
-		\item Simplicity
-		\item Modularity
-		\item Well-foremdness
-		\item Robustness
-		\item Consistency
-	\end{itemize}
+	\begin{description}
+		\item[Simplicity] – Modular structure, with each module implementing a specific task
+		\item[Modularity] – Tool for the above
+		\item[Well-formedness] – Respecting system boundaries as memory capacity, defined state after errors, adapt to changes within limits
+		\item[Robustness] – Protocol can always be exectuted
+		\item[Consistency] – avoiding deadlocks, endless loops without progress
+	\end{description}
 
 	These lead to the 10 rules of design.
 
@@ -519,7 +519,7 @@
 			\item Don't skip 1-7
 		\end{enumerate}
 	\end{defi}
-	
+
 	\subsection{Layering}
 	\label{ss-layering}
 
@@ -544,5 +544,253 @@
  	\end{halfboxr}
 
 	\textit{Cross-layer communication} can help with redundancy, but is not common, as it is hard to change. 
+
+	\subsection{Protocol elements}
+	\label{ss-protocol-elements}
+	
+	\subsubsection{Addressing communication parties}
+	\label{sss-addressing-communication-parties}
+	
+	All communicating parties need to be identifiable within the network. 
+	Therefore, a unique identifier is needed for every party.
+	You have to keep in mind address size, to be safe in the future.
+	It may be possible to introduce an option to extend the address space.
+	
+	Typically, single parties are identified, but it may also be useful to group mutiple data flows into one connection.
+
+	\paragraph{RTP flow IDs}
+	\label{pgf-rtp-flow-ids}
+	
+	The RTP (\textit{Real-time Transport Protocol}) is capable of grouping flows.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-rtp-flow-ids.png}
+		\caption{RTP header for grouping flows}
+		\label{img-2-rtp-flow-ids}
+	\end{figure}
+
+	\subsubsection{Sequence Control}
+	\label{sssec-sequence-control}
+	
+	This is necessary in order to be able to asure, that packets are received in the correct order or in which order to process incoming packets.
+	This commonly uses \textit{sequence number}.
+	Again, consider the maximum length of sequence number fields in your protocol header.
+	What to do when you run out of sequence numbers to use?
+
+	\subsubsection{Flow control}
+	\label{sssec-flow-control}
+	
+	Adapt transmit speed to clients abilities.
+	Popular approaches are 
+	\begin{itemize}
+		\item Stop-and-wait – end2end
+		\item Sliding window – hop2hop
+	\end{itemize}
+
+	General advice: Orient around RTT and only consider bandwidth reservation if resources are scalable w.r.t. number of communication parties.
+
+	Example: Transmission Rate Control (\textit{TRC}).
+	It uses the idea of applying flow control on multiple protocol layers simulaneously.
+
+	\subsubsection{Access and congestion control}
+	\label{sssec-access-and-congestion-control}
+	
+	One need to consider how to avoid network overload, and what to do, if overloading is not avoidable.
+
+	In local networks, \textit{medium access control} is used, in global networks \textit{congestion control}.
+
+	Might be necessary to violate layering approach, as is done for TCPs \textit{Explicit Congestion Control}.
+
+	Congestion control can be done on application layer by scaling down resolution of content (bitrate, lower resolution of video, etc.).
+	May change based on messages from the client. 
+	Alternatively use \textit{interarrival time} between packets and packet loss ratio (UDP only).
+
+	\subsubsection{Error control}
+	\label{sss-error-control}
+	
+	There often is the need to detect and correct corrupted packets in order to minimize packet loss.
+
+	General types of error correction methods are:
+	\begin{description}
+		\item[Automatic Repeat Request \textit{ARQ}] On error, rerequest the packet. ACK or ACK/NACK approaches
+		\item[Forward Error Correction \textit{FEC}] Add redundancy to packets, use sophisticated methods such as CRC to correct them
+	\end{description}
+
+	TCP uses ARQ, but emulates a NACK with two consecutive ACKs for the same packet.
+
+	\textit{Selective ACKs} can be used to acknowledge ranges of sequence numbers \( \rightarrow \) more efficient acknowledging
+
+	\paragraph{Retransmission schemas for ARQ}
+	\label{pgf-retransmission-schemas-for-arq}
+		
+	There are three main methods used for retransmission.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-retransmission-schemas.png}
+		\caption{All introduced retransmission schemas}
+		\label{img-2-retransmission-schemas}
+	\end{figure}
+
+	\begin{thirdboxl}
+		\vspace{-\baselineskip}
+		\begin{defi}{Go-back-N}
+			Retransmitt all non-ACKed packages after a timeout occurs.
+		\end{defi}
+	\end{thirdboxl}
+	\begin{thirdboxm}
+		\vspace{-\baselineskip}
+		\begin{defi}{Selective Repeat/Reject with ACK}
+			Commulative acknowledgement for all packages up to, in this case 11. 2 gets resend, as a timeout for the ACK for 2 occurs on the server side. All packets 3 through 11 are buffered, but partially retransmitted by the server nontheless.
+		\end{defi}
+	\end{thirdboxm}
+	\begin{thirdboxr}
+		\vspace{-\baselineskip}
+		\begin{defi}{Selective Repeat/Reject with ACK and NACK}
+			Basically the same as selective repeat/reject with ACK, but NACK all missing packets upon receiving the next packet.
+		\end{defi}
+	\end{thirdboxr}
+
+	Use stop-and-wait only in cases with low RTT or where error rates are really low.
+
+	Use go-back-n if the receiver is very limitted.
+
+	Use any selective method in any other case.
+
+	\paragraph{Forward error correction schemas}
+	\label{pgf-forward-error-correction-schemas}
+	
+	Send all packets \( n \) times, to be able to correct corrupted packets. 
+
+	Redundancy per packet, i.e. with Hamming-Codes can also be used.
+
+	Also guessing what the lost packet contents were can be done, it smaller errors in some packets is not too bad. May be done by interpolating past packets.
+
+	\begin{defi}{XOR-redundancy}
+		Combine \( n \) packets into one XORed packet and send it as well.
+		XOR-redundancy is capable of restoring one packet.
+		However the clients ability to process packets in a fastly manner must be considered, as only \textbf{exactly} one packet can be reconstructed.
+	\end{defi}
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-xor-redundancy.png}
+		\caption{XOR-redundancy}
+		\label{img-2-xor-redundancy}
+	\end{figure}	
+
+	Interleaving redundancy packets and original packets can lead to the ability of restoring \( n \) sequenced packets.
+	
+	\begin{defi}{Hamming correction}
+		Insert parity bits at positions that are labeled with a power of 2.
+		Start counting with 1.
+		This blows up the original message by \( \log_2(|\texttt{message}|) \).
+		A parity bit \( n \) is calculated by adding all positions, that in their binary representation, have a 1 in position \( \log_2(n) \).
+		\tcblower
+		Let \( D \) be the hamming distance of two strings.
+		Then a \( t \) errors can be corrected, if \( D \geq 2t + 1 \), and \( t \) errors can be detected, if \( D \geq t + 1 \).
+	\end{defi}
+
+	Limitation: Hamming distance of 3 required, to be able to correct one error.
+
+	\begin{alertbox}
+		Be aware, that \textbf{BCH} codes do not seem to be relevant for the exam and are therefore not included in detail here.
+		\tcblower
+		You don't have to be able to calculate BCH codes!
+	\end{alertbox}
+
+	\begin{defi}{Bose, Chaudhuri, Hocquenghem Code (\textit{BCH})}
+		Let 
+		\begin{itemize}
+			\item \textit{block length} be \( n = 2^m -1 \)
+			\item \textit{number of parity bits } be \( p = n - k \leq m \cdot t \)
+			\item \textit{minimum distance} be \( d_{min} \geq 2t + 1 \),
+		\end{itemize}
+		with \( t < 2^{m} - 1 \) and \( m \geq 3 \). 
+		Then \( t \) is the number of errors that can be corrected. 
+		\tcblower
+		This is not a complete defintion. 
+		BCH codes are a family of codes, where each instance can be specified by giving a tuple.
+	\end{defi}
+	BCH functions more or less like CRC.
+	
+	\begin{defi}{Reed-Solomon Code}
+		Able to deal with burst errors, basically a non-binary BCH code. It generates less overhead then BCH codes. Let
+		\begin{itemize}
+			\item \textit{block length} be \( n = q-1 \)
+			\item \textit{number of parity bits} be \( n - k= 2 \cdot t \)
+			\item \textit{minimum distance} be \( d_{min} = 2t + 1 \),
+		\end{itemize}
+		where \( q \) is any power of any prime \( p \), then \( t \) errors can be corrected.
+	\end{defi}
+
+	Ignoring checksums might be a valid way to minimize paket loss, if application can tolerate errors.
+
+	\textit{Refector} makes use of this approach, with an opt-in mechanism.
+	It is used on the end hosts.
+	Analogy: Postmen can handle wrongfully addressed letters to a certain degree.
+	Refector does the same, and can therefore handle minimally corrupted headers.
+	The \enquote{correct} application is found by choosing the one with the minimal hamming distance to the received header. 
+	There are some field in the IP header, that can be ignored in the process, such as \textit{Version}.
+	The protocol build on UDP.
+	It reduces packet loss up to 25\%.
+
+	\subsubsection{Encodings}
+	\label{sss-encodings}
+	
+	The focus here lies mainly on compression.
+
+	There are two variants: Lossy and loss-less compression.
+
+	Lossy compression is highly recommended for video streams, as small pixel errors are not recognizable by the human eye.
+	
+	\paragraph{Lossless compression}
+	\label{pgf-lossless-compression}
+
+	Again, two main methods:
+	\begin{enumerate}
+		\item remove redundancy: compress sequences of the same symbol 
+		\item statistical analysis: statistically construct the optimal compression scheme
+	\end{enumerate}
+	
+	\begin{defi}{Run-length encoding \textit{RLE}}
+		Basically compress all sequences \texttt{AAAAAAAAA} \( \rightarrow \) \texttt{A!9} and so on.
+	\end{defi}
+
+	\begin{defi}{Differential Enconding}
+		Instead of storing the values themselves, encode the distance to the nearest other datapoints.
+	\end{defi}
+	
+
+
+		
+	
+
+	
+				
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \end{document}
