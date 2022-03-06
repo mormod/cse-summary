@@ -28,8 +28,12 @@
 
 \begin{document}
 	\maketitle
+	\setcounter{tocdepth}{2}
 	\tableofcontents
+	
+	\newpage
 	\section{Network Programming}
+
 	There are five socket types, but only three are relevant.
 	\begin{itemize}
 		\item \texttt{SOCK\_RAW}
@@ -489,6 +493,7 @@
 	
 	Middleboxes may also change all other possible fields, but those changes are not common.
 		
+	\newpage
 	\section{Design Patterns}
 	\label{design-patterns}
 	
@@ -638,7 +643,7 @@
 	\begin{thirdboxl}
 		\vspace{-\baselineskip}
 		\begin{defi}{Go-back-N}
-			Retransmitt all non-ACKed packages after a timeout occurs.
+			Retransmit all non-ACKed packages after a timeout occurs.
 		\end{defi}
 	\end{thirdboxl}
 	\begin{thirdboxm}
@@ -788,7 +793,7 @@
 		\enquote{How much information is carried by each symbol?}
 	\end{defi}
 
-	This is used for \textit{Huffmann Code}.
+	This is used for \textit{Huffman Code}.
 
 	\begin{algo}{Huffman Code}
 		Encode a data stream in a binary tree, starting with the leafes.
@@ -936,19 +941,363 @@
 		\end{figure}
 	\end{defi}
 	
+	\textit{Zmap} also makes use of this, in order to scan a complete network without being blocked by service providers, as scanning the addressspace linearly would result in a block.
 
+	\subsubsection{Indirection}
+	\label{sss-indirection}
+	
+	\begin{center}
+		\enquote{Every problem in Computer Science can be solved by another layer of indirection.}
+	\end{center}
 
+	\paragraph{Multicast}
+	\label{pgf-multicast}
+	
+	Multicast makes use of \textit{indirection}:
+	\begin{itemize}
+		\item Client sends packet to address of multicast group
+		\item Routers and middleboxes in general forward the packet to all clients, that registered for this group
+	\end{itemize}
 
+	\paragraph{Content Distribution Network}
+	\label{pgf-content-distribution-network}	
 
+	Replicate content on a tree-like structure of other servers. Media servers are mirrors of a main server. 
+
+	Indirection comes from the fact, that all clients use the same address to connect, but are \textit{redirected} to the same server.
+
+	See \texttt{google.com}, there is no single Google server, there are thousands, that distribute the load among themselves.
+
+	Tool to use to achieve this: DNS.
 	
 	
+	\subsection{Design of HTTP}
+	\label{ss-design-of-http}
+	
+	HTTP was designed for documentation exchange between spacially far apart machines. Originally designed to work on simple \texttt{ASCII} strings, terminated by a carriage return.
+
+	\subsubsection{HTTP/0.9}
+	\label{sss-http-0.9}
+	
+		Operates on TCP port 80, and only supports \textit{HTML}.
+		Content is send directly, after a correct request was received.
+		The connection is immediately closed after servicing a request.
+
+	Some commonly used commands are
+	\begin{description}
+		\item[GET] Request for content
+		\item[PUT] Store document on server
+		\item[HEAD] Only request header information
+		\item[POST] Append content to webpage
+		\item[DELETE] Remove contents from server
+	\end{description}
+	
+	\subsubsection{HTTP/1.0}
+	\label{sss-http-1.0}
+	
+	Introduces \textit{multi-line requests} and \textit{responses}. Response objects are not limited to HTTP anymore.
+	
+	Content is send after meta information about the contents of the webpage.
+	Otherwise basically the same as \cref{sss-http-0.9}. 
+
+	\begin{halfboxl}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/2-http-10-requests.png}
+			\caption{Request structure of HTTP 1.0}
+			\label{img-2-http-10-requests}
+		\end{figure}	
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/2-http-10-response.png}
+			\caption{Response structure of HTTP 1.0}
+			\label{img-2-http-10-response}
+		\end{figure}
+	\end{halfboxr}
+	
+	\subsubsection{HTTP/1.1}
+	\label{sss-http-1.1}
+	
+	In comparisson to \cref{sss-http-1.0}, the following things are extended:
+	\begin{itemize}
+		\item Request method
+		\item Error codes
+		\item Headers
+		\item List of accepted file types: All types are allowed
+	\end{itemize}
+
+	\textit{Cookies} can be used in order to make HTTP stateful.
+	Connections are not immediatly closed upon sending out a response. 
+	Furhtermore:
+	\begin{itemize}
+		\item Content encodings and character sets were introduces
+		\item Languages can be negotiated
+		\item Caching enabled
+		\item Cookies introduced
+		\item \dots
+	\end{itemize}
+
+	\paragraph{Dynamic Adaptive Streaming over HTTP}
+	\label{pgf-dynamic-adaptive-streaming-over-http}
+	
+	Method to make HTTP a \enquote{real} streaming protocol.
+
+	\begin{enumerate}
+		\item Cut down video file into several smaller chunks and store them in differnt bitrates
+		\item Client firstly loads file that contains names of all chunks that need to be downloaded over the course of streaming
+		\item Client requests chunks one-by-one, each with its own HTTP request. Bitrate can be adjusted with every request
+	\end{enumerate}
+
+	This is \textbf{not} an option of HTTP, but really a use-case of it.
+
+	\paragraph{Head of Line Blocking}
+	\label{pgf-head-of-line-blocking}
+	
+	Allthough HTTP/1.1 uses up to 6 different connections per connection to a webserver, websites still load pretty slowly. Solution: \textbf{Pipelining}. 
+
+	This means that requests are send out directly after each other, without waiting for responses. 
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-hol-pipelining.png}
+		\caption{HoL Pipelining}
+		\label{img-2-hol-pipelining}
+	\end{figure}
+	
+	However, large requests still slow down loading.
+
+	\paragraph{Domain Sharding}
+	\label{pgf-domain-sharding}
+	
+	Instead of keeping all resources on one webserver, distribute them accross multiple subdomains. 
+	\begin{center}
+		\texttt{www.example.com} \( \rightarrow \)  \texttt{\( \set{\textit{sub}_{1}, \dots, \texttt{sub}_{n}}\texttt{.example.com} \)}
+	\end{center}
+
+	This leads to more DNS lookups, which can also slow down loading, also there are more connections to be kept alive.
+	
+	If one nows what he is doing, domain sharding can increase throughput. However, most application overuse it, which leads to underused TCP connection and therefore more overhead, which in turn slows down communication again.
+
+	\subsubsection{Spriting Images and Concatenating Files}
+	\label{sss-spriting-images-and-concatenating-files}
+	
+	\begin{halfboxl}
+		\textbf{Advantages} 
+		\begin{itemize}
+			\item Reduces number of overall requests
+		\end{itemize}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\textbf{Disadvantages}
+		\begin{itemize}
+			\item Waste of bandwidth if not all resources are needed
+			\item If one single element is updated, the whole bundle must be acquired again
+			\item Sprites require slow parsing
+			\item Spritet images need more memory
+		\end{itemize}
+	\end{halfboxr}
+
+	\( \Rightarrow \) Enjoy with care, there is not much good to it.
+
+	\subsubsection{Resource Inlining}
+	\label{sss-resource-inlining}
+	
+	Idea: Embed resources in webpage itself.
+
+	Inline CSS, JS, even images (using \( \texttt{Base}_{64} \)) and audio can be embedded.
+
+	\begin{halfboxl}
+		\textbf{Advantages} 
+		\begin{itemize}
+			\item Reduces number of overall requests
+		\end{itemize}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\textbf{Disadvantages}
+		\begin{itemize}
+			\item Waste of bandwidth if not all resources are needed
+			\item If one single element is updated, the whole bundle must be acquired again
+			\item No reusability of assets, need to be included into every source file that use those resources, which leads to a memory penalty
+		\end{itemize}
+	\end{halfboxr}
+
+	\subsubsection{HTTP/2}
+	\label{sss-http-2}
+	
+	Goals were not to use as many connections and lower the \textit{perceived} time things take to load, while retaining the high-level semenatics of HTTP/1.1.
+	HTTP/2's smallest unit of communication now is a so called \textit{frame}, which are send over \textit{exactly} one connection.
+	It also uses binary represenation instead of \texttt{ASCII}.
+
+	\begin{halfboxl}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/2-http2-frame.png}
+			\caption{Frame of HTTP/2 communication}
+			\label{img-2-http2-frame}
+		\end{figure}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/2-http2-conn.png}
+			\caption{Layout of connection via HTTP/2}
+			\label{img-2-http2-conn}
+		\end{figure}
+	\end{halfboxr}
+	
+	HTTP/2 also allows to specify, in which order to download content from the web server. The order is represented by a tree structure. This allows for signal priortization. 
+
+	\alert{This is only a recommendation. The server is not required to follow the requested download order.}
+
+	Also, a server is allowed to \texttt{PUSH} data to the client, without the client requesting it. It can be used to pre-send CSS files and similar data. The server has to announce the push, the client can deny it. Pushed data \textit{has} to come from the same domain, such that no external data can be pushed to the client.
+
+	Flow control is supported, but has to be implemented by the application. 
+	There is no implemenation specified in the standard.
+
+	Is scheduled to be removed from Google services.
+
+	\paragraph{Header compression with \texttt{HPACK}}
+	\label{pgf-header-compression}
+	
+	Headers have up to 800 bytes of data, which is repetitive. 
+	They are now allowed to be compressed, using Huffman encoding and a combination of static and dynamic tables (see \cref{pgf-lossless-compression}).
+	The static table contains codes for the 61 most common headers used in HTTP/2.	
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-http2-huffman.png}
+		\caption{Huffman encoding of HTTP/2 headers}
+		\label{img-2-http2-huffman}
+	\end{figure}	
+
+	Unknown information can be learned and stored in the \textit{dynamic} part of the table.
+	This way, the client can send shorter requests, saving bandwidth.
+	Things to be learned start with \texttt{0b01XX}, as this signals, that the next bits are not Huffman encoded, but just plaintext.
+	
+	\paragraph{HTTP/2 and TLS}
+	\label{pgf-http/2-and-tls}
+	
+	Both together build \texttt{HTTPS}, the secure version of HTTP.
+
+	\vspace{0.5cm}
+	\begin{alertbox}
+		HTTP/3 is the newest version available for HTTP communication. 
+	\end{alertbox}
+	
+	\subsection{Quick UDP Internet Connection (QUIC)}
+	\label{ss-quick-udp-internet-connection-quic}
+
+	QUIC uses many already established ideas and combines them into one single protocol, whilst avoiding the huge overhead introduced by TCP.
+
+	Its main focus lies on better supporting HTTP, which it achieves by being able to map QUIC streams to HTTP/2 streams.
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.6\textwidth]{img/2-quic-vs-http.png}
+		\caption{Comparission of structure of QUIC and HTTP}
+		\label{img-2-quic-vs-http}
+	\end{figure}
+
+	\paragraph{Multiplexing in QUIC}
+	\label{pgf-multiplexing-in-quic}
+	
+	Because UDP is used instead of TCP, multiplexing is smoother, as Head-of-Line blocking is not possible anymore, due to missing control mechanismns in UDP.
+	Of course, lost packets effect the stream the packet belonged to, but not all streams anymore.
+
+	\paragraph{Connection Esablishment}
+	\label{pgf-connection-esablishement}
+	
+	It uses the same idea as TCP fast open in \cref{tcp-fast-open}.
+	Also TLS 1.3 is directly integrated in QUIC, which uses a 0-RTT design. 
+	This allows to connect to servers, that you connected to in the past, by sending an old token, which proofs your identity.
+	Of course there is a timeout, after which a completly new connection has to be established.
+
+	Also, QUIC is not bound to the IP address of the parties, but to random 64-bit identifiers. 
+	This allows for easier mobile usage.
+
+	\begin{halfboxl}
+		\begin{center}
+			\begin{description}
+				\item[CHLO] – Client Hellow
+				\item[SNI] – Server Name Identification
+				\item[CERT] – Certificate of Servers identity
+				\item[REJ] – Reject
+				\item[SHLO] – Server Hello
+				\item[VER] - Verification
+				\item[SRCT] – ?
+			\end{description}
+		\end{center}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=0.3\textwidth]{img/2-quic-connecting.png}
+			\caption{Connection to a server with QUIC}
+			\label{img-2-quic-connecting}
+		\end{figure}
+	\end{halfboxr}
+
+	Subsequent connections send header information, including verification and client hello, together with encrypted request.
+	
+	\paragraph{Congestion Control and Reliability in QUIC}
+	\label{pgf-congestion-control-in-quic}
+	
+	Is based on TCP NewReno and also implements TCP Pacing, which spreads send packages evenly across RTT. 
+	This avoids peaks, therefore lowering the risk of congesting the network.
+	The reception of the first ACK (or NACK) is anticipated.
+
+	Selective Acknowledgements are used. 
+	Retransmissions have new sequence numbers, which increase monotonically.	
+
+	\paragraph{Connection Migration}
+	\label{pgf-connection-migration}
+	
+	Upon change of IP address of a client, TCP would drop the connection.
+	QUIC is able to migrate the \enquote{new} connection into the old one, as connections are not identified by the clients ID, as explained in \cref{pgf-connection-esablishement}.
+	
+	\newpage
+	\section{Kernel Networking}
+	\label{s-kernel-networking}
+	
+	A kernel is used, to abstract the complete interaction with the hardware, s.t. user space programs do not need to worry about any of that.
+	Basic kernel tasks include, but are not limited to:
+	\begin{itemize}
+		\item I/O interface for user space programs
+		\item Handle interrupts
+		\item Handle hardware utilization 
+		\item Structuring hardware systems
+		\item Virtualization
+			\dots
+	\end{itemize}
+
+	No kernel ever trusts a user space program. 
+
+	\begin{defi}{Kernel mode}
+		The mode, that the kernel operates in. In kernel mode, software has full access of the hardware, and has priviledged rights.
+	\end{defi}
+
+	\begin{defi}{User mode}
+		The mode, which user applications are assigned to. No hardware access, operations are only accepted, if kernel API is used.
+	\end{defi}
+	
+	Kernel is not one single thread, instead utilizes threads for all common operations, which are spawned by a \texttt{init}-thread.
+
+	\subsection{Interrupts}
+	\label{ss-interrupts}
 	
 	
 
-	
 
 
-		
+
+
+
+
 	
 
 	
