@@ -21,12 +21,14 @@
 	]{FiraCode Nerd Font}
 
 \newcommand{\fkt}[1]{\texttt{#1}(\(\cdot\))}
+\newcommand{\alert}[1]{\textbf{\textcolor{red!75!black}{#1}}}
 
 \title{Communications Systems Engineering}
 \author{Moritz Hüllmann}
 
 \begin{document}
 	\maketitle
+	\tableofcontents
 	\section{Network Programming}
 	There are five socket types, but only three are relevant.
 	\begin{itemize}
@@ -761,6 +763,188 @@
 	\begin{defi}{Differential Enconding}
 		Instead of storing the values themselves, encode the distance to the nearest other datapoints.
 	\end{defi}
+
+	\begin{algo}{Lempel-Ziv-Welch Encoding}
+		Building a dictionary for phrases during encoding of the data.
+		\tcblower
+		\( D = \set{\texttt{All unique symbols in the data stream}} \)
+
+		\( E = \set{d_i \rightarrow e_i \mid d_i \in D, e_i \in \nat \texttt{ unique}} \)
+		
+			Start at the \( 1^{\text{st}} \) position (\( i = 1 \))	of the plain text \( w = w_1w_2\cdots w_n \).
+		\begin{enumerate}
+			\item Encode \( w_{i}, \dots, w_{i+k-1} \) with longest match in \( E \) as \( e_j \) with \( |e_j| = k \).
+			\item Add \( w_i e_j \) to \( D \) and a corresponding encoding to \( E \).
+			\item Move to position \( i + k \).
+			\item Repeat until done.
+		\end{enumerate}	
+	\end{algo}
+	
+	We now will continue with \textbf{statistical analysis}.
+
+	\begin{defi}{Entropy}
+		\( H = -\sum_{i=1}^n p_i \cdot \log_2(p_i) \), where \( p_i \) is the probability of \( i \) appearing.
+		\tcblower
+		\enquote{How much information is carried by each symbol?}
+	\end{defi}
+
+	This is used for \textit{Huffmann Code}.
+
+	\begin{algo}{Huffman Code}
+		Encode a data stream in a binary tree, starting with the leafes.
+
+		\textbf{Input:} Data stream.
+
+		\textbf{Returns:} Optimal encoding w.r.t. entropy.
+		\tcblower
+		\begin{enumerate}
+			\item Assign each symbol of your alphabet the probability, with which it occurs in the data stream. Add mapping to a set.
+			\item Add two mappings \( a \rightarrow p(a) \) and \( b \rightarrow p(b) \) with lowest probability from your set to the tree. Remove them from the set. Left: smaller prob.
+			\item Add a parent node \( ab \rightarrow p(a)+p(b) \).
+			\item Add generated mapping to set.
+			\item Repeat until set is empty.
+		\end{enumerate}
+		\alert{Always choose \textit{prefix free} code words.}
+	\end{algo}
+	
+	However, Huffman code cannot guarantee the smallest code size.
+
+	\begin{algo}{Arithmetic Encoding}
+		Encode data as a value between \( [0,1]_\reals \)
+		\tcblower
+		Assign each symbol a corresponding probability again
+		\begin{enumerate}
+			\item Start at position 1 of the data stream \( w =w_{1}w_{2}\dots w_{n} \).
+			\item Divide the assigned interval (see figure below), that matches \( p_{w_{1}\dots w_i} \) into smaller segments, corresponding to \( p_{w_{1}\dots w_i} \cdot p_{s}\), where \( p_s \) is the probability of symbol \( s \) occuring.
+			\item Choose the subsegment, that matches a prefix of your data stream
+			\item Do so until all is done.
+		\end{enumerate}
+		Then, with \( p_{\texttt{data}} = p \), the data can be encoded using only \( \ceil*{-\log_{2}(p_{\texttt{data}})} \) bits.
+	\end{algo}
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-arithmetic-encoding.png}
+		\caption{Example of arithmetic encoding}
+		\label{img-2-arithmetic-encoding}
+	\end{figure}
+
+	\subsection{Protocol design aspects}
+	\label{ss-protocol-design-aspects}
+
+	\subsubsection{Connection type}
+	\label{sss-connection-type}
+	
+		You have to decide, if you want to design a \textit{connectionsless} or \textit{connection-oriented} protocol. 
+	Rule of thumb: The more controll parameters are nedded, the higher the chance you need connection oriented protocols.
+	
+	If single commands will all fit in one UDP packet, would be alright as well.
+
+	UDP is also better suited for real-time and/or interactive applications, as it is much faster.
+	
+	\subsubsection{Signaling}
+	\label{sss-signaling}
+	
+	Before, during and after connections, signalling must be done.
+	This includes \textit{status information}, \textit{parameters of the connection}, specific to this connection and so on.
+
+	\begin{defi}{Out-of-band signalling}
+		There are separate control and data streams.
+		They may be implemented in two seperate protocoll \enquote{phases}, or on different ports.
+		One could even use different protocols for control and data streams.
+
+		Is able to provide QoS.
+		\tcblower
+		For example \textit{SIP}.
+	\end{defi}
+
+	\begin{defi}{In-band signalling}
+		There is \textbf{no} separate control stream, but a combined data and signal stream.
+		\tcblower
+		For example \textit{TCP}.
+	\end{defi}
+
+	\subsubsection{Maintaining network state}
+	\label{sss-maintaining-network-state}
+	
+	Protocols may store states in the network on nodes in the path between to parties.
+
+	\paragraph{Hard state maintaining}
+	\label{pgf-hard-state-maintaining}
+	
+	State changes only with dedicated control messages.
+
+	Requires really reliable signalling.
+	Checks, if a node is still alive has to be performed from time to time.
+
+	Example: TCP \( \rightarrow \) \texttt{FIN} messages needed to terminate connections.
+
+	\paragraph{Soft state maintaining}
+	\label{pgf-soft-state-maintaining}
+	
+	Timeouts may delete a state. 
+	Must be refreshed to be kept alive.
+
+	\alert{This is almost always the approriate maintaining method!}
+
+	Both state maintaining methods may implement the other one for certain things, s.t. some protocols use a mixture.
+
+	\subsubsection{Control of communication}
+	\label{sss-control-of-communication}
+	
+	\begin{halfboxl}
+		\textbf{Centralized Control}
+		\begin{itemize}
+			\item Easy to program and debug
+			\item Ex.: Client/Server 
+		\end{itemize}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\textbf{Decentralized Control}
+		\begin{itemize}
+			\item More robust, no single point of failure
+			\item Harder to implement
+			\item Ex.: P2P
+		\end{itemize}
+	\end{halfboxr}
+	
+	A mixed approach is \textit{Software Defined Networking (SDN)}.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/2-sdn.png}
+		\caption{Software defined networking}
+		\label{img-2-sdn}
+	\end{figure}
+
+
+	\subsubsection{Randomization of protocols}
+	\label{sss-randomization-of-protocols}
+	
+	Useful to make sequence numbers non-predictable, making it more secure.
+
+	CSMA/CD uses random waiting times on errors, to avoid consecutive collisions.
+
+	\begin{defi}{Random Early Discard}
+		Throw away packets, \textbf{before} buffer capacity is reached.
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/2-red.png}
+			\caption{Random Early Discard}
+			\label{img-2-red}
+		\end{figure}
+	\end{defi}
+	
+
+
+
+
+	
+	
+	
+	
+
 	
 
 
