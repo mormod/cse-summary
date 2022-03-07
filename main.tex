@@ -16,7 +16,7 @@
 
 \usepackage{fontspec}
 \setmonofont[
-  Contextuals={Alternate},
+  Contextuals=Alternate,
 	Scale=MatchLowercase
 	]{FiraCode Nerd Font}
 
@@ -27,9 +27,58 @@
 \author{Moritz Hüllmann}
 
 \begin{document}
+	\pagenumbering{gobble}
 	\maketitle
 	\setcounter{tocdepth}{2}
 	\tableofcontents
+
+	\newpage
+	\pagenumbering{arabic}
+	\section{Introduction}
+	\label{s-introduction}
+	
+	A \textit{Communication System} is a system, that provides functionality in order to be able to transmit data to other communicating parties.
+
+	\textit{Communication Services} implement concrete components with standardized interfaces, upon which communication systems are build.
+
+	A \textit{Protocol} combines all those components into one entity.
+	They define \textit{messages} in a specific \textit{format}, which obey \textit{rules} for sending and receiving data.
+	Protocols can be implemented on all layers of the ISO/OSI reference model, except layer 1 and 2, as they are responsible for the physical transportation of bits.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/0-iso-osi.png}
+		\caption{ISO/OSI}
+		\label{img-0-iso-osi}
+	\end{figure}
+	
+	Units of communication are called \textit{Packets}, which are structured, within the linux kernel, as shown in the following.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/0-paket-kernel-rep.png}
+		\caption{Packets in the Linux kernel}
+		\label{img-0-paket-kernel-rep}
+	\end{figure}
+	
+	Each layer simply adds its header to the structure, thus minimizing copy-operations.
+
+	\subsection{Clayton Tunnel Protocol}
+	\label{ss-clayton-tunnel-protocol}
+	\begin{halfboxl}
+		This particular malformed protocol was meant to ensure, that only one train enters a tunnel per track. 
+		
+		However, the protocol was not suited for signalling, that more than one train is in the tunnel, which leads to \textit{Undefined Behavior} in cases where this happens on accident.
+	\end{halfboxl}
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/0-clayton.png}
+			\caption{Depiction of the Clayton Tunnel Protocol}
+			\label{img-0-clayton}
+		\end{figure}
+	\end{halfboxr}
 	
 	\newpage
 	\section{Network Programming}
@@ -116,7 +165,7 @@
 		\label{img-1-getaddrinfo-usage}
 	\end{figure}	
 	
-	\subsubsection{Server-side programming}
+	\subsubsection{Server-side Programming}
 
 	Up until now, only communication setup was discussed, we need to communicate now.
 
@@ -148,7 +197,7 @@
 		\textbf{Returns:} File descriptor for new socket, that handles the accepted connection from now on.
 	\end{defi}
 
-	\subsubsection{Client-side programming}
+	\subsubsection{Client-side Programming}
 
 	\begin{defi}{\fkt{connect}}
 		This function connects the socket to a server.
@@ -164,7 +213,7 @@
 		\textbf{Returns:} 0 on success, -1 on failure
 	\end{defi}
 	
-	\subsubsection{Sending and receiving}
+	\subsubsection{Sending and Receiving}
 	
 	One can \textit{write} to and \textit{read} from sockets, with the following functions:
 	\begin{itemize}
@@ -240,7 +289,7 @@
 
 	Again, if it is not known which version of IP is going to be used, use \texttt{struct sockaddr\_storage}, to allow for both versions.
 
-	\subsubsection{Closing connections}
+	\subsubsection{Closing Connections}
 
 	There are several methods for closing a connection, each to be used in a different scenario.
 
@@ -273,7 +322,7 @@
 	\fkt{shutdown} cannot stand alone. 
 	\fkt{close} must be called after a call to \fkt{shutdown}, as it releases all hugged \texttt{struct}s.
 
-	\subsubsection{Connection overview}
+	\subsubsection{Connection Overview}
 
 	\begin{figure}[H]
 		\centering
@@ -282,7 +331,7 @@
 		\label{img-1-connection-overview}
 	\end{figure}
 
-	\subsubsection{Configuring a socket}
+	\subsubsection{Configuring a Socket}
 
 	\begin{defi}{\fkt{setsockopt}}
 		Apply options to sockets.
@@ -305,11 +354,11 @@
 		\item \dots
 	\end{itemize}
 	
-	\subsubsection{Non-blocking sockets}
+	\subsubsection{Non-blocking Sockets}
 	
 	There are two methods that one could use: \fkt{select} and \texttt{epoll}.
 
-	\paragraph{Non-blocking sockets using \fkt{select}}
+	\paragraph{Non-blocking Sockets using \fkt{select}}
 	All network calls are blocking by default. 
 	This is not optimal in a server setting, as this introduces great overhead and occupies many ressources of the server, that could be used elsewhere. 
 	\textbf{Threads} are not an option for highly scalable systems, as they introduce great computation overhead.
@@ -336,7 +385,7 @@
 		\texttt{}
 	\end{defi}
 
-	\paragraph{Non-blocking sockets using \texttt{epoll}}
+	\paragraph{Non-blocking Sockets using \texttt{epoll}}
 
 	It knows two modes:
 	\begin{enumerate}
@@ -359,7 +408,7 @@
 		\label{img-1-epoll-vs-select}
 	\end{figure}
 
-	\subsection{TCP options and packetization}
+	\subsection{TCP Options and Packetization}
 	\label{tcp-options-and-packetization}
 	
 	TCP needs to decide important questions: 
@@ -402,7 +451,7 @@
 
 	Basic idea: when data is received, we will want to send data as a response.
 	Piggy back ACKs for previous data on data you want to send.
-	The delay is \( \leq 0.5 \textit{s} \).
+	The maximum delay is \( \leq 0.5 \textit{s} \).
 	At least every second packet with MSS is ACKed immediately.
 	
 	This also is TCP default behaviour.
@@ -416,7 +465,7 @@
 
 	Can also be achieved with \fkt{send} and its \texttt{flags}, by adding \texttt{MSG\_MORE} to it.
 
-	\subsubsection{TCP fast open}
+	\subsubsection{TCP Fast Open}
 	\label{tcp-fast-open}
 	
 	Normal TCP has 1 RTT delay due to 3-way handshake.
@@ -552,10 +601,10 @@
 
 	\textit{Cross-layer communication} can help with redundancy, but is not common, as it is hard to change. 
 
-	\subsection{Protocol elements}
+	\subsection{Protocol Elements}
 	\label{ss-protocol-elements}
 	
-	\subsubsection{Addressing communication parties}
+	\subsubsection{Addressing Communication Parties}
 	\label{sss-addressing-communication-parties}
 	
 	All communicating parties need to be identifiable within the network. 
@@ -565,7 +614,7 @@
 	
 	Typically, single parties are identified, but it may also be useful to group mutiple data flows into one connection.
 
-	\paragraph{RTP flow IDs}
+	\paragraph{RTP Flow IDs}
 	\label{pgf-rtp-flow-ids}
 	
 	The RTP (\textit{Real-time Transport Protocol}) is capable of grouping flows.
@@ -585,7 +634,7 @@
 	Again, consider the maximum length of sequence number fields in your protocol header.
 	What to do when you run out of sequence numbers to use?
 
-	\subsubsection{Flow control}
+	\subsubsection{Flow Control}
 	\label{sssec-flow-control}
 	
 	Adapt transmit speed to clients abilities.
@@ -598,9 +647,9 @@
 	General advice: Orient around RTT and only consider bandwidth reservation if resources are scalable w.r.t. number of communication parties.
 
 	Example: Transmission Rate Control (\textit{TRC}).
-	It uses the idea of applying flow control on multiple protocol layers simulaneously.
+	It uses the idea of applying flow control on multiple protocol layers simultaneously.
 
-	\subsubsection{Access and congestion control}
+	\subsubsection{Access and Congestion Control}
 	\label{sssec-access-and-congestion-control}
 	
 	One need to consider how to avoid network overload, and what to do, if overloading is not avoidable.
@@ -613,7 +662,7 @@
 	May change based on messages from the client. 
 	Alternatively use \textit{interarrival time} between packets and packet loss ratio (UDP only).
 
-	\subsubsection{Error control}
+	\subsubsection{Error Control}
 	\label{sss-error-control}
 	
 	There often is the need to detect and correct corrupted packets in order to minimize packet loss.
@@ -628,7 +677,7 @@
 
 	\textit{Selective ACKs} can be used to acknowledge ranges of sequence numbers \( \rightarrow \) more efficient acknowledging
 
-	\paragraph{Retransmission schemas for ARQ}
+	\paragraph{Retransmission Schemas for ARQ}
 	\label{pgf-retransmission-schemas-for-arq}
 		
 	There are three main methods used for retransmission.
@@ -665,7 +714,11 @@
 
 	Use any selective method in any other case.
 
-	\paragraph{Forward error correction schemas}
+	\textit{NACK-only} strategies do not work in \enquote{normal} operation, they however work in high-throughput, high-reliability networks. 
+	This is due to the problem, that NACKs are not able to signal the reception of messages, only obviously missing packets.
+	This way, missing of the last packet of a stream cannot be detected, as the client does not know that another packet was send, which does not generate a NACK which would signal to the server, that the last packet has gone missing.
+
+	\paragraph{Forward Error Correction Schemas}
 	\label{pgf-forward-error-correction-schemas}
 	
 	Send all packets \( n \) times, to be able to correct corrupted packets. 
@@ -752,7 +805,7 @@
 
 	Lossy compression is highly recommended for video streams, as small pixel errors are not recognizable by the human eye.
 	
-	\paragraph{Lossless compression}
+	\paragraph{Lossless Compression}
 	\label{pgf-lossless-compression}
 
 	Again, two main methods:
@@ -769,7 +822,7 @@
 		Instead of storing the values themselves, encode the distance to the nearest other datapoints.
 	\end{defi}
 
-	\begin{algo}{Lempel-Ziv-Welch Encoding}
+	\begin{algo}{Lempel-Ziv-Welch Encoding (LZW)}
 		Building a dictionary for phrases during encoding of the data.
 		\tcblower
 		\( D = \set{\texttt{All unique symbols in the data stream}} \)
@@ -779,7 +832,7 @@
 			Start at the \( 1^{\text{st}} \) position (\( i = 1 \))	of the plain text \( w = w_1w_2\cdots w_n \).
 		\begin{enumerate}
 			\item Encode \( w_{i}, \dots, w_{i+k-1} \) with longest match in \( E \) as \( e_j \) with \( |e_j| = k \).
-			\item Add \( w_i e_j \) to \( D \) and a corresponding encoding to \( E \).
+			\item Add \( e_jw_{i+k} \) to \( D \) and a corresponding encoding to \( E \).
 			\item Move to position \( i + k \).
 			\item Repeat until done.
 		\end{enumerate}	
@@ -788,7 +841,13 @@
 	We now will continue with \textbf{statistical analysis}.
 
 	\begin{defi}{Entropy}
-		\( H = -\sum_{i=1}^n p_i \cdot \log_2(p_i) \), where \( p_i \) is the probability of \( i \) appearing.
+		\textbf{Information per symbol}
+		\( I_i = -\log_{2}(p_i) \)
+
+		\textbf{Entropy for whole word}
+		\( H = \sum_{i=1}^n p_i \cdot I_i \)
+
+		with \( p_i \) is the probability of \( i \) appearing.
 		\tcblower
 		\enquote{How much information is carried by each symbol?}
 	\end{defi}
@@ -811,20 +870,28 @@
 		\end{enumerate}
 		\alert{Always choose \textit{prefix free} code words.}
 	\end{algo}
+
+	The resulting code, which is generated by traversing the tree, can be evaluated w.r.t. entropy: 
+	\begin{enumerate}
+		\item Compute information per symbol
+		\item Calculate entropy of the system, \( H_\texttt{theory} \)
+		\item Calculate entropy of the code like \(H_\texttt{code} = \sum_{i=1}^n p_i \cdot |\texttt{code}_i| \) 
+		\item Compare the two entropies
+	\end{enumerate}
 	
-	However, Huffman code cannot guarantee the smallest code size.
+	However, Huffman code cannot guarantee the smallest code size (\( H_\texttt{code} \approx H_ \texttt{theory} \)).
 
 	\begin{algo}{Arithmetic Encoding}
 		Encode data as a value between \( [0,1]_\reals \)
 		\tcblower
-		Assign each symbol a corresponding probability again
+		Assign each symbol a corresponding probability again.
+		Start at position \( i = 1 \) of the data stream \( w =w_{1}w_{2}\dots w_{n} \).
 		\begin{enumerate}
-			\item Start at position 1 of the data stream \( w =w_{1}w_{2}\dots w_{n} \).
 			\item Divide the assigned interval (see figure below), that matches \( p_{w_{1}\dots w_i} \) into smaller segments, corresponding to \( p_{w_{1}\dots w_i} \cdot p_{s}\), where \( p_s \) is the probability of symbol \( s \) occuring.
-			\item Choose the subsegment, that matches a prefix of your data stream
-			\item Do so until all is done.
+			\item Choose the subsegment (which is \( w_{1}\dots w_i \cdot s \)), that matches \( w_{1}\dots w_{i+1} \) of your data stream
+			\item Increase \( i \) and continue until all is done.
 		\end{enumerate}
-		Then, with \( p_{\texttt{data}} = p \), the data can be encoded using only \( \ceil*{-\log_{2}(p_{\texttt{data}})} \) bits.
+		Then, with \( p_{w_{1}w_{2}\dots w_n} = p \), the data can be encoded using only \( \ceil*{-\log_{2}(p)} \) bits.
 	\end{algo}
 
 	\begin{figure}[H]
@@ -834,10 +901,10 @@
 		\label{img-2-arithmetic-encoding}
 	\end{figure}
 
-	\subsection{Protocol design aspects}
+	\subsection{Protocol Design Aspects}
 	\label{ss-protocol-design-aspects}
 
-	\subsubsection{Connection type}
+	\subsubsection{Connection Type}
 	\label{sss-connection-type}
 	
 		You have to decide, if you want to design a \textit{connectionsless} or \textit{connection-oriented} protocol. 
@@ -869,12 +936,12 @@
 		For example \textit{TCP}.
 	\end{defi}
 
-	\subsubsection{Maintaining network state}
+	\subsubsection{Maintaining Network State}
 	\label{sss-maintaining-network-state}
 	
 	Protocols may store states in the network on nodes in the path between to parties.
 
-	\paragraph{Hard state maintaining}
+	\paragraph{Hard State Maintaining}
 	\label{pgf-hard-state-maintaining}
 	
 	State changes only with dedicated control messages.
@@ -884,7 +951,7 @@
 
 	Example: TCP \( \rightarrow \) \texttt{FIN} messages needed to terminate connections.
 
-	\paragraph{Soft state maintaining}
+	\paragraph{Soft State Maintaining}
 	\label{pgf-soft-state-maintaining}
 	
 	Timeouts may delete a state. 
@@ -894,7 +961,7 @@
 
 	Both state maintaining methods may implement the other one for certain things, s.t. some protocols use a mixture.
 
-	\subsubsection{Control of communication}
+	\subsubsection{Control of Communication}
 	\label{sss-control-of-communication}
 	
 	\begin{halfboxl}
@@ -924,7 +991,7 @@
 	\end{figure}
 
 
-	\subsubsection{Randomization of protocols}
+	\subsubsection{Randomization of Protocols}
 	\label{sss-randomization-of-protocols}
 	
 	Useful to make sequence numbers non-predictable, making it more secure.
@@ -1039,7 +1106,7 @@
 		\item \dots
 	\end{itemize}
 
-	\paragraph{Dynamic Adaptive Streaming over HTTP}
+	\paragraph{Dynamic Adaptive Streaming over HTTP (DASH)}
 	\label{pgf-dynamic-adaptive-streaming-over-http}
 	
 	Method to make HTTP a \enquote{real} streaming protocol.
@@ -1050,7 +1117,7 @@
 		\item Client requests chunks one-by-one, each with its own HTTP request. Bitrate can be adjusted with every request
 	\end{enumerate}
 
-	This is \textbf{not} an option of HTTP, but really a use-case of it.
+	This is \textbf{not} an \textbf{option} of HTTP, but really a use-case of it.
 
 	\paragraph{Head of Line Blocking}
 	\label{pgf-head-of-line-blocking}
@@ -1078,7 +1145,7 @@
 
 	This leads to more DNS lookups, which can also slow down loading, also there are more connections to be kept alive.
 	
-	If one nows what he is doing, domain sharding can increase throughput. However, most application overuse it, which leads to underused TCP connection and therefore more overhead, which in turn slows down communication again.
+	If one knows what he is doing, domain sharding can increase throughput. However, most application overuse it, which leads to underused TCP connections and therefore more overhead, which in turn slows down communication again.
 
 	\subsubsection{Spriting Images and Concatenating Files}
 	\label{sss-spriting-images-and-concatenating-files}
@@ -1155,12 +1222,14 @@
 
 	Also, a server is allowed to \texttt{PUSH} data to the client, without the client requesting it. It can be used to pre-send CSS files and similar data. The server has to announce the push, the client can deny it. Pushed data \textit{has} to come from the same domain, such that no external data can be pushed to the client.
 
-	Flow control is supported, but has to be implemented by the application. 
-	There is no implemenation specified in the standard.
-
 	Is scheduled to be removed from Google services.
 
-	\paragraph{Header compression with \texttt{HPACK}}
+	Flow control is supported, but has to be implemented by the application. 
+	Additional flow control is useful, as TCP only supports flow control on a per-connection basis. 
+	As HTTP/2 supports more than one stream per connection, per-stream flow control can be implemented as well.
+	There is no implemenation specified in the standard.
+
+	\paragraph{Header Compression with \texttt{HPACK}}
 	\label{pgf-header-compression}
 	
 	Headers have up to 800 bytes of data, which is repetitive. 
@@ -1290,9 +1359,250 @@
 	\subsection{Interrupts}
 	\label{ss-interrupts}
 	
+	Interrupts are flags set by hardware components to get the \enquote{attention} of the CPU.
+	If an interrupt is raised, the current operation is paused immediately, unless the current operation itself is an interrupt handler.
+	Interrupt handlers are functions within the kernel, that perform \textit{very} short actions, depending on what the interrupt is all about. 
 	
+	Interrupt sources (i.e. events, that cause an interrupt) can be system calls, external interrupt requests (by hardware), as well as exceptions.
 
+	If an interrupt is called, a context change has to be performed, which introduces some computational overhead.
 
+	\subsubsection{Interrupt Vectors and Handlers}
+	\label{sss-interrupt-vectors}
+	
+	\begin{halfboxl}
+		Might also be called \textit{Interrupt Descriptor Table (IDT)}.
+		
+		Interrupt vectors are used by the kernel to map a certain interrupt to the corresponding interrupt handler.
+		This vector is a partition in the RAM, which maps interrupt sources to their respective handlers. 
+		
+		Interrupt handlers are loaded on boot, too. 
+		Loading them on demand would lead to significant overhead, because everytime an interrupt would be raised, the correct handler has to be fetched from the hard  drive again.
+		
+		Some also important terminology:
+		\begin{description}
+			\item[PIC] Programmable Interrupt Controller
+			\item[IRQ] Interrupt Request
+		\end{description}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/3-interrupt-handling-img.png}
+			\caption{Conceptual scheme of how an interrupt is handled in \texttt{x86}}
+			\label{img-3-interrupt-handling-img}
+		\end{figure}
+	\end{halfboxr}
+
+	Interrupt handlers, under no circumstances, are not allowed to run for a long time or perform blocking operations, as the system gets unresponsive quickly.
+	Often times, a flag is set, the actual handling of the interrupt is performed after a polling operation \cref{ss-polling}.
+	
+	\subsubsection{Context Switching}
+	\label{sss-context-switching}
+	
+	When an interrupt is raised and the handler is called, the context, in which the previous process was running, has to be saved, in order to be able to continue the process after the interrupt was handled.
+
+	This basically means storing register values to a structure in the kernel.
+
+	In some cases, only a subset of registers is stored, as interrupts on that specific machine are not touching the other registers in any way. 
+	This saves time, because unmodifiable data is not stored.
+
+	\subsubsection{Interrupt Handling in Linux}
+	\label{sss-interrupt-handling-in-linux}
+	
+	\alert{All the methods introduced in the following are executed in kernel space!}
+
+	Handling of interrupts in Linux is twofold.
+	
+	\paragraph{Top Half}
+	\label{pgf-top-half}
+	
+	This is the part that is executed on the spot.
+	Those actions include:
+	\begin{itemize}
+		\item Mask other interrupts, block other interrupts from firing
+		\item Save context of prev. process
+		\item Call the proper interrupt handler and schedule it
+	\end{itemize}
+
+	\paragraph{Bottom Half}
+	\label{pgf-bottom-half}
+	
+	This is where all the interesting stuff is happening.
+	This is the \enquote{real} interrupt handler, which might be time critical, but nontheless is scheduled as a normal process, maybe with a higher priority.
+
+	\begin{alertbox}
+		Interrupt handlers cannot sleep. 
+		This would be way to expensive.
+		There also is no context to restore, as interrupt handlers are not normal functions. 
+		It has no corresponding \textit{process control block}.
+	\end{alertbox}
+	
+	\subsubsection{SoftIRQs}
+	\label{sss-softirqs}
+	
+	\begin{defi}{SoftIRQ}
+		A SoftIRQ is a process that gets scheduled with the highest possible priority. It does not interrupt the current process, but is certainely scheduled to be executed next.
+	\end{defi}
+
+	Those are statically allocated at boot. 
+	A special struct is used to pass information to that SoftIRQ, which (not only) consits of:
+	\begin{itemize}
+		\item A pointer to the handler
+		\item A pointer to the data that has to be passed to the SoftIRQ
+	\end{itemize}
+
+	These structures are used by \texttt{ksoftirqd}, the SoftIRQ daemon in the kernel, which spawns for every core of the CPU.
+
+	A special function \fkt{do\_softirq} is used in order to call all pending SoftIRQs, they can also be called in response to a finished interrupt handler.
+	These can be run on multiple cores simultaneously and \textbf{reschedule themselves}.
+
+	It is strongly disregarded to implement SoftIRQs by yourself.
+
+	\subsubsection{Tasklets}
+	\label{sss-tasklets}
+	
+	An easier to use version is the \enquote{Tasklet}:
+
+	\begin{defi}{Tasklet}
+		Build on top of SoftIRQs, but can also be created dynamically.
+		Tasklets are assigned to one concrete CPU, and are cache-affine.
+	\end{defi}
+
+	There are several functions to work with tasklets.
+	\begin{itemize}
+		\item \fkt{tasklet\_init} 
+		\item \fkt{tasklet\_disable[\_nosync]} (\texttt{*\_nosync} does not wait for the tasklet to return) 
+		\item \fkt{tasklet\_kill}
+	\end{itemize}
+	
+	\textbf{Note:} Tasklets are run in interrupt context.
+
+	\subsubsection{Work Queues}
+	\label{sss-work-queues}
+	
+	Is a subsystem of the Linux kernel. There is one dedicated \textit{default worker thread} per CPU.
+	You could also create your own \textit{special worker threads}. 
+	Often times, this is not needed.
+	However, if you need to perform much processing, defer to a worker thread in order to be able to handle incoming packets directly, when they are handed to your main thread.
+
+	Work executed in the default worker thread should ideally not block, as this prevents other tasks to be completed.
+
+	\subsubsection{Overview and Comparisson}
+	\label{sss-overview}
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/3-softirq-vs-rest.png}
+		\caption{Comparisson of the three introduced methods}
+		\label{img-3-softirq-vs-rest}
+	\end{figure}
+
+	\subsection{Polling}
+	\label{ss-polling}
+	
+	Polling is constant, periodical checking, if a certain condidtion is met or a flag is set.
+	The polling period is critical, as too fast checking may overload the CPU, whereas too slow checking leads to not being able to handle fast occuring events.
+
+	\subsection{Handling Pakets in the Kernel}
+	\label{ss-handling-pakets-in-the-kernel}
+	
+	A packet follows the depicted path below.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/3-packets-kernel.png}
+		\caption{Processing of a packet}
+		\label{img-3-packets-kernel}
+	\end{figure}
+
+	The SoftIRQ in (6.) is marked pending, and then is executed from the kernel daemon responsible for SoftIRQs, \texttt{ksoftirqd}. This SoftIRQ calls \fkt{net\_rx\_action}, which disables NIC interrupts, and starts a polling mechanism, see \cref{img-3-napi}.
+	This is done to efficiently receive data without being interrupted.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/3-napi.png}
+		\caption{Inner workings of the New API}
+		\label{img-3-napi}
+	\end{figure}
+
+	The budget in step (2.) prevents the poll to hug all system resources, as with each handled packet, the counter of the budget is decreased by one.	
+	This enables efficient handling of bursts, without consuming the whole CPU for a long time, if there were much more packets to come.
+
+	When a concrete packet is processed, the corresponding memory in the RAM is un-mapped, s.t. the network driver cannot write to that specific location anymore. This way, packets can be processed in-place.
+
+	After a packet is processed, the memory is re-mapped.
+
+	\subsection{Socket Buffers}
+	\label{ss-socket-buffers}
+	
+	These are the most fundamental parts of networking.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/3-skbuff.png}
+		\caption{Depiction of usage of \texttt{sk\_buff}}
+		\label{img-3-skbuff}
+	\end{figure}
+
+	Each \texttt{sk\_buff} is a double linked list.
+	The position of the start of each header (TCP, UDP, IP, whatever) is stored in data fields within \texttt{sk\_buff}.
+	There are also field to store pointers to headers within headers (\texttt{*\_inner\_*}).
+	Some important components:
+	\begin{description}
+		\item[\texttt{next}] for double linked list
+		\item[\texttt{prev}] for double linked list
+		\item[\texttt{list}] to what list the buffer belongs
+		\item[\texttt{sk}] socket that packet belongs to
+		\item[\texttt{dev}] device the packet belongs to
+		\item[\texttt{stamp}] timestamp
+		\item[\texttt{sc}] security path traversed in the packet
+		\item[\texttt{cb}] control block, used for flags
+		\item[\texttt{len}] total length of packet
+		\item[\texttt{data\_len}] lenght of payload
+		\item[\texttt{user}] reference counter
+		\item[Header information] as described in the paragraph above
+	\end{description}
+	
+	\subsubsection{Working on Data with \texttt{sk\_buff}s}
+	\label{sss-working-on-data-with-sk_buffs}
+	
+	
+	\begin{halfboxl}
+		There exist blocks of memory resevered by the kernel, which are able to hold a complete packet, including header information.
+		These are \textit{only} used by the kernel.
+
+		Note, that the data pointer starts on top of the IP header. 
+		This is, because, the most upper layer (MAC) is not interessted in where the actual payload starts. 
+		It just needs to know, where the data starts, that needs to be send.
+
+		On reception of such a packet, the headers have information needed to disassemble the whole packet into different headers and finally the payload, by providing a field which points to the start of the data, as viewed for that protocol. 
+		For example, the IP header might have a length field, that when added to the address of the IP header, points to the start of the UDP header.
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/3-data-skbuff.png}
+			\caption{Data representation in an \texttt{sk\_buff}}
+			\label{img-3-data-skbuff}
+		\end{figure}
+	\end{halfboxr}
+	
+	\subsection{Packet Processing Workflow}
+	\label{ss-protocol-processing-workflow}
+	
+	\fkt{netif\_receive\_skb} in \cref{img-3-packet-processing-workflow} is called by a function somewhere in \fkt{net\_receive\_skb} form \cref{img-3-napi}.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.85\textwidth]{img/3-packet-processing-workflow.png}
+		\caption{Packet processing workflow}
+		\label{img-3-packet-processing-workflow}
+	\end{figure}
+	
+		
+	
 
 
 
@@ -1302,8 +1612,6 @@
 
 	
 				
-
-
 
 
 
