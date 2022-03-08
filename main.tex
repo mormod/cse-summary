@@ -23,8 +23,7 @@
 \newcommand{\fkt}[1]{\texttt{#1}(\(\cdot\))}
 \newcommand{\alert}[1]{\textbf{\textcolor{red!75!black}{#1}}}
 
-\title{Communications Systems Engineering}
-\author{Moritz Hüllmann}
+\title{{\small Summary of} \\ Communications Systems Engineering \\ {\small WS 2021/22}}
 
 \begin{document}
 	\pagenumbering{gobble}
@@ -1356,7 +1355,7 @@
 	
 	Kernel is not one single thread, instead utilizes threads for all common operations, which are spawned by a \texttt{init}-thread.
 
-	\subsection{Interrupts}
+	\subsection{Interrupts and Friends}
 	\label{ss-interrupts}
 	
 	Interrupts are flags set by hardware components to get the \enquote{attention} of the CPU.
@@ -1443,6 +1442,9 @@
 	
 	\begin{defi}{SoftIRQ}
 		A SoftIRQ is a process that gets scheduled with the highest possible priority. It does not interrupt the current process, but is certainely scheduled to be executed next.
+		\tcblower
+		SoftIRQs are \textbf{not} bound to one specific CPU.
+		They are reentrant, s.t. data structures have to be protected with spinlocks.
 	\end{defi}
 
 	Those are statically allocated at boot. 
@@ -1467,6 +1469,10 @@
 	\begin{defi}{Tasklet}
 		Build on top of SoftIRQs, but can also be created dynamically.
 		Tasklets are assigned to one concrete CPU, and are cache-affine.
+		\tcblower
+		Tasklets \textbf{are} bound to a specific CPU.
+		Tasklets are not reentrant.
+		This means, that it does not need to protect data.
 	\end{defi}
 
 	There are several functions to work with tasklets.
@@ -1600,16 +1606,352 @@
 		\caption{Packet processing workflow}
 		\label{img-3-packet-processing-workflow}
 	\end{figure}
+
+	\subsection{Memory Management in the Kernel}
+	\label{ss-kernel-networking-memory-allocation-in-the-kernel}
+	
+	\fkt{malloc} is a user-space function, that deliveres a contiguous region of \textit{virtual memory} to the user process of a size that can be selected on random by the user application.	
+	\fkt{free} releases that memory, and makes the regions available to other processes again.
+
+	However, this are user-space functions. The kernel needs to be able to access the physical memory with harsh performance restrictions. 
+	Memory should be allocated without the kernel threads being required to wait (or sleep).
+
+	This leads to 
+
+	\subsubsection{Typical Allocation}
+	\label{sss:memory-allocation-in-the-kernel:typical-allocation}
+
+	\begin{defi}{\fkt{kmalloc}}
+		This is the kernel equivalent of \fkt{malloc}.
+		\begin{lstlisting}[language=C]
+			void *kmalloc(size_t size, int flags);
+		\end{lstlisting}
+		\tcblower
+		\texttt{flags} – Change the behaviour of the allocator
+	\end{defi}
+
+	Common flags are
+	\begin{itemize}
+		\item \texttt{\_\_GFP\_HIGH} – Access to emergency memory pools
+		\item \texttt{\_\_GFP\_NOFAIL} – Try allocating on failure again 
+		\item \texttt{\_\_GFP\_DMA} – Allocate DMA cabable memory 
+		\item \texttt{\_\_GFP\_ATOMIC} – Don't sleep  
+		\item \texttt{\_\_GFP\_KERNEL} – \enquote{Normal} allocation of memory
+	\end{itemize}
+
+	Free memory allocated by \fkt{kmalloc} with \fkt{kfree}.
+
+	If more memory is needed than can be delivered \fkt{kmalloc}, try using \fkt{vmalloc}, which returns a virutal memory range to the kernel.  
+
+	\subsubsection{Slab Allocation}
+	\label{sss:memory-allocation-in-the-kernel:slab-allocation}
+	
+	Pre-allocate slabs of fixes size in the kernels memory region, which then can be allocated by any other process very efficiently.
+	
+	\alert{This is the preferred method of allocation for incoming IP packets.}
+
+	Flags control the behaviour of the slab allocator function; some common and useful flags are:
+	\begin{itemize}
+		\item \texttt{SLAB\_POISON} – Prefill the slab with a known value pattern
+		\item \texttt{SLAB\_RED\_ZONE} – Reserve areas at the end of slabs for buffer overflow detection
+	\end{itemize}
+	Also, flags from \cref{sss:memory-allocation-in-the-kernel:typical-allocation} (or variants) can be used. 
+		
+	Slab caches can be repurposed, if less elements of one slab size is needed and more of another.	
+
+	\subsubsection{Kernel Process Stacks}
+	\label{sss:memory-allocation-in-the-kernel:kernel-process-stacks}
+	
+	Each kernel thread has a \textbf{fixed size} stack, of typically 8kB on 32-bit machines (2 slabs).
+	Thus, don't use static allocation for large buffers in the kernel, but use \fkt{kmalloc} and family for large buffers. 
+
+	If a kernel stack runs out of memory, \texttt{thread\_info} in the threads control structure might be overwritten, which corrupts this thread for sure. 
+
+	\subsection{Sleeping and Locking}
+	\label{ss:kernel-networking:sleeping-and-locking}
+	
+	Locking is essential for synchronizating threads in the kernel and guarantee correct concurrency, i.e. resolving race conditions and protecting critical regions.	
+
+	There are numerous sources for concurrency in Linux:
+	\begin{itemize}
+		\item Interrupts – interrupts current process
+		\item SoftIRQs/Tasklets – same as for interrupts
+		\item Kernel preemption – threads are assigned slots
+		\item Sleeping/Synchronization – sleeping tasks are not run until awaken
+		\item Symmetrical Multiprocessing – more than one processor executing kernel threads
+	\end{itemize}
+
+	There are atomic datatypes (\texttt{atomic\_t}, \texttt{atomic64\_t}, etc.), but those only enable \textbf{one} atomic operation in a row. 
+
+
+	\subsubsection{Deadlocks}
+	\label{sss:sleeping-and-locking:deadlocks}
+	
+	The locking order is essential in avoiding deadlocks.
+	Nested locks must \textit{always} be obtained in the same order.
+	A deadlock can only occur with at least two processes and two locked ressources.
+
+	\subsubsection{Semaphores}
+	\label{sss:sleeping-and-locking:semaphores}
+	
+	Semaphores are initialized with a number of allowed concurrent accesses.
+
+	When \textbf{waiting} for a semaphore, it is checked if the reference counter of the semaphore is greater than 0. 
+	If so, decrease the counter and enter critical section. 
+	If not, the calling process is put to \textbf{sleep}, and awaken when the semaphore counter is greater 0 again.
+	Sleeping is most useful, if the lock is held for a long time by a process.
+
+	When \textbf{releasing} an instance of a semaphore, simply, \textit{atomically}, increase the semaphore counter.	
+	
+	\subsubsection{Spinlocks}
+	\label{sss:sleeping-and-locking:spinlocks}
+
+	Spinlocks are basically semaphores with an initial counter value of 1. 
+
+	Threads, that want to acquire control of a lock are not put to sleep, when no instance is available. 
+	Instead, it busy waits and tries to acquire the lock over and over again. 
+
+	Within a spinlock, very concise operations, that are fast to execute (read: no memory operations), as other processes that are busy waiting for the lock, are blocking ressources unnecessarily long.
+
+	\alert{If you have acquired a spinlock, the scheduler is disabled!} 
+
+	\subsubsection{Locking in User Context}
+	\label{sss:sleeping-and-locking:locking-in-user-context}
+	
+	Locking in user context should be performed by semaphores, as spinlocks disable the scheduler. 
+	
+	\subsubsection{Locking User Context and SoftIRQs/Tasklets}
+	\label{sss:sleeping-and-locking:locking-user-context-and-softirqs/tasklets}
+	
+	Use \fkt{spin\_lock\_bh} to disable SoftIRQs on that specific CPU, and then grabs the lock. 
+	Disabling hardware interrupts is also possible, but not as common.
+	These are \fkt{spin\_lock\_irq[save]}. The  \texttt{save} version is recommended, as this stores and restores interrupt context, e.g. what locks were locked before.   
+
+	This way, other SoftIRQs are not able to interrupt your processing in cricical sections, if you share memory.
+	
+	\subsubsection{Locking between Tasklets}
+	\label{sss:sleeping-and-locking:locking-between-tasklets}
+	
+	Only important between different tasklets, as instances of the same tasklet always run on different CPUs.
+
+	Just use normal \fkt{spin\_[un]lock}. The \texttt{bh} version is not needed, as you already are a tasklet and none tasklet on the same CPU will interrupt you. 
+
+	\subsubsection{Locking between SoftIRQs}
+	\label{sss:sleeping-and-locking:locking-between-softirqs}
+	
+	Again, instances of the same SoftIRQ are run on seperate CPUs. Thus see \cref{sss:sleeping-and-locking:locking-between-tasklets}. 
+
+	\subsubsection{Locking between HardIRQs and SoftIRQs/Tasklets}
+	\label{sss:reader:locking-between-hardirqs-and-softirqs/tasklets}
+	
+	Use \fkt{spin\_[un]lock}, as SoftIRQs cannot interrupt IRQs.
+	Only use the \texttt{irq} versions, if two seperate interrupt handlers share memory.
+
+	\subsection{Reader-Writer Spinlock}
+	\label{ss:kernel-networking:reader-writer-spinlock}
+	
+	\textit{Read} and \textit{write} operations are treated differentely:
+	
+	On read, all write operations get locked. Concurrent reads are allowed.
+	On write, all read operations get locked. Concurrent writes are disallowed.
+
+	They are implemented by spinlocks.
+	
+	\newpage
+	\section{Testing}
+	\label{s:testing}
+
+	\begin{alertbox}
+		In WS 2021/22, this chapter was not relevant for the exam.
+	\end{alertbox}
+
+	\section{Discrete Event Simulation}
+	\label{s:discrete-event-simulation}
+
+	Until now, only design and implementation of protocols were discussed.
+	Before a protocol is deployed to the internet, it has to be thoroughly tested. 
+	For this porpose, the system, for which the protocol was designed, is simulated. 
+
+	\subsection{Overview}
+	\label{ss:discrete-event-simulation:overview}
+	
+	\begin{defi}{Simulation}
+		A computer simulation is a simulation, that runs on a single computer or a network of computers to reproduce behaviour of a system. This simulation uses a discrete an minimal model of the system to simulate.
+	\end{defi}
+
+	\subsubsection{Systems}
+	\label{sss:overview:systems} 
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/5-system.png}
+		\caption{Depiction of a \enquote{system}}
+		\label{img-5-system}
+	\end{figure}
+	
+	A \textit{system state} is a set of variables with their corresponding values, which represent the state of a system at a discrete moment in time.	
+
+	State of subsystems naturally are also part of the state of the whole system.
+
+	Continuous values are discretised. 
+
+	\begin{halfboxl}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-system-state-changes.png}
+			\caption{Possible ways a system can change state}
+			\label{img-5-system-state-changes}
+		\end{figure}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-system-overview.png}
+			\caption{Possible system configurations}
+			\label{img-5-system-overview}
+		\end{figure}
+	\end{halfboxr}
+
+
+	State changes can be \textit{deterministic}, based on hard rules without randomness, or \textit{stochastical}, where randomness can be used.
+
+	In simulations, stochastic, time-discrete/state-discrete state changes are used.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/5-system-to-model.png}
+		\caption{System to model relation}
+		\label{img-5-system-to-model}
+	\end{figure}
+	
+	Equivalent \textit{stimuli} have to yield the same \textit{observed metric}.
+
+	\subsection{Discrete Event Simulation}
+	\label{ss:discrete-event-simulation:discrete-event-simulation}
+	
+	\textit{Discrete} in this context means \textit{time-discrete}, stochastic systems.
+	This poses a problem, as stochastic systems don't necessarily yield the same results for the same input. 
+	However, as computers have no methods of generating real randomness, just use a  \textit{seeded} pseudo-random number generator.
+
+	\begin{defi}{Next-Event Time Advance Algorithm}
+		\begin{halfboxl}
+			We will simulate only the points in time, where the state of the model changes, all other times can be skipped.
+			The time in the model is kept by a \textit{simulation clock}.
+			System time commonly starts at \( t = 0 \).
+			
+			The time of occurence of the next event is known. 
+			All future events are stored in a list. 
+			This list might be pre-generated, or generated on the fly.
+		\end{halfboxl}%
+		\begin{halfboxr}
+			\vspace{-\baselineskip}
+			\begin{figure}[H]
+				\centering
+				\includegraphics[width=\textwidth]{img/5-net-aa.png}
+				\caption{Depiction of the algorithm}
+				\label{img-5-net-aa}
+			\end{figure}
+		\end{halfboxr}
+	\end{defi}
+
+	\begin{defi}{Notions of Time}
+		An important distinction to make is between the outside clock and the inside clock of a simulation. Notions of the times:
+
+		\begin{halfboxl}
+			\textbf{Inside}
+			 \begin{itemize}
+				\item Simulated time
+				\item \alert{Simulation time} 
+			\end{itemize}
+		\end{halfboxl}%
+		\begin{halfboxr}
+			\vspace{-\baselineskip}
+			\textbf{Outside} 
+			\begin{itemize}
+				\item \alert{Simulation time} 
+				\item Simulation runtime
+				\item Wall-clock time
+			\end{itemize}
+		\end{halfboxr}
+
+		Be careful with the term \textit{simulation time}, as it is ambigous.
+	\end{defi}
+
+
+	\subsubsection{Framework}
+	\label{sss:discrete-event-simulation:framework}
+	
+	The protocol is executed on top of a \textit{DES-Framework}, which exposes an API to the protocol.
+
+	\paragraph{Simulation Entities}
+	\label{pgf:framework:simulation-entities}
+	
+	Objects, that are processed over the course of a run of the protocol.
+
+	\paragraph{Events}
+	\label{pgf:framework:events}
+	
+	Events can be seen as the following pseudo-\texttt{struct}:
+	\begin{lstlisting}[language=C]
+		struct event {
+			time_t 	occurance;
+			fct_t	function;
+			args[] 	args_for_func;
+		};
+	\end{lstlisting}
+	
+	where the \texttt{function} gets called upon invokation of the event at time \texttt{occurance}.
+
+	\begin{defi}{Future Event Set (FES)}
+		The set, which holds all events, that are currently known and scheduled for future execution.
+		\tcblower
+		It is important to choose the correct data structure, to minimize the time overhead needed for finding the next event to process.
+	\end{defi}
+	
+	\paragraph{Simulation Clock}
+	\label{pgf:framework:simulation-clock}
+	
+	Often \textit{integers} are used, as there is no need to tell the computer how a real-world date format works. 
+	Maybe use the same approach as the \texttt{epoch}-time.
+
+	\paragraph{Init and Main Loop}
+	\label{pgf:framework:init-and-main-loop}
+	
+	In the  \textbf{init}-function, all objects are traversed and initialized if needed.
+	In the \textbf{main}-function, do the following:
+	\begin{enumerate}
+		\item Pick next item from FES
+		\item Advance time to the \texttt{occurance} time of the event
+		\item Execute event handler  \texttt{function} of event
+		\item Cleanup
+		\item Repeat, until no more events to handle
+	\end{enumerate}
+
+	\paragraph{Teardown}
+	\label{pgf:framework:teardown}
+
+	Stop the simulations \texttt{main} function.
+	Print out statistics and so on.
+	Cleanup.
+	
+	\subsection{Simulation Framework}
+	\label{ss:discrete-event-simulation:simulation-framework}
+	
+	
 	
 		
 	
 
-
-
-
-
+		
+		
+		
+			
+			
+			
 	
-
+	
+	
+	
 	
 				
 
