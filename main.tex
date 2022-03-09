@@ -23,7 +23,8 @@
 \newcommand{\fkt}[1]{\texttt{#1}(\(\cdot\))}
 \newcommand{\alert}[1]{\textbf{\textcolor{red!75!black}{#1}}}
 
-\title{{\small Summary of} \\ Communications Systems Engineering \\ {\small WS 2021/22}}
+\title{{\small Summary of} \\ Communications Systems Engineering \\ {\small WS 2021/22} \vspace{-1.5cm}}
+\date{}
 
 \begin{document}
 	\pagenumbering{gobble}
@@ -1935,9 +1936,298 @@
 	Cleanup.
 	
 	\subsection{Simulation Framework}
-	\label{ss:discrete-event-simulation:simulation-framework}
+	\label{ss:discrete-event-simulation:simulation-framework} 
+
+	There are some frameworks, that make running simulations easier, as they take away some hard tasks from you.
+	
+	Simulation frameworks are not easy to scale. 
+	They are complex w.r.t structure and computation, if, e.g. radio propagation shall be simulated.
+
+	\subsubsection{OMNeT++}
+	\label{sss:simulation-framework:omnet++}
+	
+	\begin{halfboxl}
+		Design your own model on top of this framework in \texttt{C++}.
+		Is a \enquote{general purpose} simulation framework and not limited to communication networks. 
+		
+		It uses \textit{hierarchically nested} modules.
+		Structured like discussed above: 	
+		\[
+			 \texttt{init}\rightarrow\texttt{event handling}\rightarrow\texttt{teardown}.
+		\]
+		Uses network \textit{description language (NED)}.	
+		We can define \textit{layers}, \textit{channels} and \textit{compound} modules.
+		All have parameters, that describe, e.g. in case of layers, the bit error rate, speed and other defining parameters.
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-ned.png}
+			\caption{Example of \textit{NED}}
+			\label{img-5-ned}
+		\end{figure}
+	\end{halfboxr}
+
+	In addition to \cref{img-5-ned}, you have to implement event handling in \texttt{C++}. 
+	
+	\begin{halfboxl}
+		\textbf{Strenghts} \\
+		\begin{itemize}
+			\item Clean separation topology definition \( \leftrightarrow \) functional implementation
+			\item Very general use-case
+		\end{itemize}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\textbf{Weaknesses}\\
+		\begin{itemize}
+			\item Networks are not simulated realistically 
+		\end{itemize}
+	\end{halfboxr}
+
+	\subsubsection{ns-3}
+	\label{sss:simulation-framework:ns-3}
+	
+	\begin{halfboxl}
+		Better suited for network protocol simulation.
+		It allows for a mixup of simulation and real world, as it allows to integrate \enquote{real} programs to the simulation.
+		
+		It implements Linux networking architecture and ISO/OSI reference models.
+		
+		Applications are connected by channels. You are expected to use the protocol stack which is provided by the framework.
+		
+		It is possible to use real-world nodes and challes, or simulate the whole system.
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-ns-3.png}
+			\caption{Data Flow Model of \texttt{ns-3}}
+			\label{img-5-ns-3}
+		\end{figure}
+	\end{halfboxr}
+
+	Also follows the same structure as OMNet++.
+	Can only be used for simulating networks.
+
+	\subsection{Random Number Generators}
+	\label{ss:discrete-event-simulation:random-number-generators}
+	
+	The \enquote{stochastic} part of DES means, that there is a certain degree of randomness, that has to be taken account while simulating your protocol.
+	It is important, to have reproducible randomness. 
+	This can be achieved by seeding a pseudo-random number generator, s.t. outputs for any input appear random but are reproducible.
+	
+	Examples of random processes during network commnication:
+	\begin{itemize}
+		\item Transmitting over wireless link
+		\item Pinging remote server
+		\item \dots
+	\end{itemize}
+
+	A simple methods of generating p.-r. numbers is the following.
+
+	\begin{defi}{Linear Congruential Generator}
+		\[
+			x_n = (ax_{n-1} + c) \bmod m
+		\]
+		where \( a, c, m \) are fixed parameters. are fixed parameters.
+		\( x_{0} \) is the seed.
+		\tcblower
+		This is the easiest method to generate pseudo-random numbers.	
+
+		\alert{It is also the shittiest method to do this. Don't use it!} 
+	\end{defi}
+
+	This method is prone to starting to circle relatively quickly.
+	
+	Don't implement RNGs yourself, someone else already did that for you way better than you could. 
+	Use true random numbers as seeds.
 	
 	
+	\subsection{Parallel DES}
+	\label{ss:discrete-event-simulation:parallel-des}
+	
+	There are two ways to distribute load of a simulation:
+	\begin{enumerate}
+		\item Inter-event – \todo{was tut das}
+		\item Intra-event – \todo{was tut das} 
+	\end{enumerate}
+	
+	\begin{halfboxl}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-intra-para.png}
+			\caption{Intra-event parallelization}
+			\label{img-5-intra-para}
+		\end{figure}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-inter-para.png}
+			\caption{Inter-event parallelization}
+			\label{img-5-inter-para}
+		\end{figure}
+	\end{halfboxr}
+
+	When using inter-event parallelization, synchronization of event execution is needed, as executing events in the future can block and/or change event handling in the past, as executing an event can possibly change states, that an event uses for execution.
+	
+	Thus: need some way of checking if two events \( e_{1}, e_{2} \) can be run concurrently.
+
+	\subsubsection{Synchronization and Coordination Algorithms}
+	\label{sss:parallel-des:synchronization-and-coordination-algorithms}
+	
+	There are two possible ways to partition events:
+	\begin{enumerate}
+		\item Space seperated simulation
+		\item 	Time parallel simulation
+	\end{enumerate}
+
+	\paragraph{Space Separated Simulations}
+	\label{pgf:parallel-des:space-separated-simulations}
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/5-space-parallel.png}
+		\caption{Space parallel simulation}
+		\label{img-5-space-parallel}
+	\end{figure}
+	
+	Split up the simulation into \textit{Logical Processes}, that execute a specific partion of the simulation. 
+	If done right, this lead to very little communication overhead between the LPs, even to the degree of complete independance.
+	Each LP has to guarantee the following:
+
+	\begin{defi}{Local Causality Constraint}
+		Execute events in non-decreasing timestamp order.
+		\tcblower
+		As long as event order at the same timestamp does not matter, this guarantees correct simulations.
+	\end{defi}
+	
+	\begin{halfboxl}
+		\textbf{Conservative algorithms}
+		\begin{itemize}
+			\item Strictly avoid causality errors
+			\item Implement strategy to determine safety of execution of event
+		\end{itemize}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\textbf{Optimistic algorithms}
+		\begin{itemize}
+			\item Execute events always
+			\item Detect errors
+			\item Recover from errors
+		\end{itemize}
+	\end{halfboxr}
+
+	\paragraph{Conservative Algorithms}
+	\label{pgf:synchronization-and-coordination-algorithms:conservative-algorithms}
+	
+	Each LP holds timeinformation at runtime.
+
+	\begin{description}
+		\item[Lookahead (LA)] – Delay in simulated time between LPs.\\
+			Packet \( e \) arrives at \( t(e) + \texttt{LA} \).
+		\item[Earliest Output Time (EOT)] – Earliest simulated time, a neighbouring LP may receive a message \\ 
+			\( t(e_{n+1}) + \texttt{LA} =  \texttt{EOT} \) 
+		\item[Earliest Input Time (EIT)] – Earliest time, the LP might receive from another LP\\
+			\( \min\{\texttt{EOT}_1,\dots, \texttt{EOT}_n\} \)
+	\end{description}
+
+	Deadlocks may occur. 
+	Each LP stores EOTs of neighbouring LPs.
+	These EOTs are updated on advance of local time, and then distributed to all neighbouring LPs.
+
+	\begin{halfboxl}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-cons-nodes-legend.png}
+			\caption{How to read nodes}
+			\label{img-5-cons-nodes-legend}
+		\end{figure}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{img/5-cons-deadlock.png}
+			\caption{Depiction of a Deadlock}
+			\label{img-5-cons-deadlock}
+		\end{figure}
+	\end{halfboxr}
+
+	Each time in \cref{img-5-cons-nodes-legend} is a timestamp of earliest execution.
+	In \cref{img-5-cons-deadlock}, a deadlock is depicted, as every LP has to wait for something to happen (EIT is 10, 10 and 9), but each LP processes the next event at \( t = 12, 15, 11 \), such that no event occurs, because every node is waiting for the others to do something. 
+
+	Resolve deadlocks by announcing a \textit{null-message} upon blocking, which contains the earliest time of action for that specific LP, which then gets used to update the EOT of the next LP.
+
+	This may lead to slow incremental increase of time, if all LPs block and the next possible event lies far in the future \(~100 s \).
+
+	Avoiding this is done by \textit{Lower Bound on Timestamp (LBTS)}. 
+	This handles simulation in two phases:
+	\begin{enumerate}
+		\item Determine global barrier \( B \): 
+			\(
+				B = \min\{t(e_\texttt{next}( P_{i})) + LA(P_{i})\}
+			\)
+		\item	 Parallel event simulation
+			\(
+				\text{Process all local event with } t(e) \leq B
+			\)
+	\end{enumerate}
+	
+	\begin{halfboxl}
+		\textbf{Advantages} 
+		\begin{itemize}
+			\item No time creeping
+			\item No deadlocks
+		\end{itemize}
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\textbf{Disadvantages} 
+		\begin{itemize}
+			\item Central info gathering is bottelneck
+			\item Workload determined by most busy partition
+		\end{itemize}
+	\end{halfboxr}
+
+	\paragraph{Optimistic Algorithms}
+	\label{pgf:synchronization-and-coordination-algorithms:optimistic-algorithms}
+	
+	As conservative algorithms often are too strict, resort to optimistic algorithms, which avoid unnecessary blocking, and is handling errors, if they occur.
+
+	To do this, optimistic algorithms save the state of all LPs regularly.
+	On error, send a message to all LPs and roll back to correct state again.
+
+	\paragraph{Overview}
+	\label{pgf:synchronization-and-coordination-algorithms:overview}
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/5-cons-vs-opti.png}
+		\caption{Comparisson conservative and optimistic algorithms}
+		\label{img-5-cons-vs-opti}
+	\end{figure}
+	
+	
+	
+	
+	
+	
+		
+
+	
+
+
+
+
+
+	
+	
+ 	
 	
 		
 	
