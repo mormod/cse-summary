@@ -2212,6 +2212,115 @@
 		\label{img-5-cons-vs-opti}
 	\end{figure}
 	
+	\subsection{Performance Evaluation using DES}
+	\label{ss:discrete-event-simulation:performance-evaluation-using-des}
+	
+	\begin{halfboxl}
+		Results of simulations have to be evaluate in a \enquote{real-world} setting. 	
+		This means, that the abstraction we simulated is an accurate representation of the real system.
+		However, you only can observe a snapshot of the systems behaviour. 
+		To get better measurements, follow a cycle of simulation and evaluation as shown in \cref{img-5-scientific-method}.
+
+		Performance measurements only make sense, if you have quality models, that are simple and credible, as well as well documented.
+
+		The quality of the implementation of the model itself is important, too.
+		Standard code quality metrics apply, but the code should be verifiable, and therefore open to the public (if it is something of interessted for the \enquote{general}	public).
+
+	\end{halfboxl}%
+	\begin{halfboxr}
+		\vspace{-\baselineskip}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=0.6\textwidth]{img/5-scientific-method.png}
+			\caption{Simulation/Evaluation cycle}
+			\label{img-5-scientific-method}
+		\end{figure}
+	\end{halfboxr}
+
+	\subsubsection{Performance Evaluation Study (PES)}
+	\label{sss:performance-evaluation-using-des:performance-evaluation-study-(pes)}
+	
+	The steps to follow for a standard PES:
+	\begin{enumerate}
+		\item Formulate the problem and define the system
+		\item Chosse metrics, factors and levels
+		\item Collect data 
+		\item Choose simulation environment and implement the model
+		\item Verify data
+		\item Validate 
+		\item Experiment with data, analyse it and finally present it
+	\end{enumerate}
+
+	We will have a closer look at those steps.
+
+	\paragraph{Defining the Problem}
+	\label{pgf:performance-evaluation-using-des:defining-the-problem}
+	
+	Formulate your goal in a neutral way, such that you don't predefine the outcome of the study.
+
+	\alert{Do your best not to prefer one specific outcome, as this leads way to a bias!}
+	
+	Cleary define, what belongs to the system, and what does not.
+
+	\paragraph{Metrics, Levels and Factors}
+	\label{pgf:performance-evaluation-using-des:metrics,-levels-and-factors}
+	
+	After the problem and what is within the boundaries of the problem are defined, the system can be specified further, by analysing what the variables of the problem (and simulation) are.
+
+	\begin{thirdboxl}
+		\begin{defi}{Metric}
+			Measure, that reflects the system performance.
+		\end{defi}
+	\end{thirdboxl}%
+	\begin{thirdboxm}
+		\begin{defi}{Factors}
+			Parameter of the system.
+		\end{defi}
+	\end{thirdboxm}%
+	\begin{thirdboxr}
+		\begin{defi}{Levels}
+			All possible values of a factor.
+		\end{defi}
+	\end{thirdboxr}
+		
+	\paragraph{Data Collection and Modelling}
+	\label{pgf:performance-evaluation-study:data-collection-and-modelling}
+	
+	Before the system can be accurately modeled, the system must be known.
+	Implement a prototyp, and perform measurements to gather data on how your protocol behaves. 
+	This includes specifying \textit{input/output relationships}.
+	
+	Specify, 
+	\begin{enumerate}
+		\item how the identified parts of the system interact, both quantitative and qualitative
+		\item what the general assumptions of the surroundings are,
+		\item why a feature is needed to be simulated. Leave out all features, that are not worth the implementation cost
+	\end{enumerate}
+
+	\paragraph{Chose Simulation Environment}
+	\label{pgf:performance-evaluation-study:chose-simulation-environment}
+	
+	Basically choose one that suits your needs. No idea why this is thematized so extensively.	
+	Make sure it is suitable for the protocol you want to test.
+	
+	\paragraph{Verification}
+	\label{pgf:performance-evaluation-study-:verification}
+	
+	You \textbf{have} to assure, that your implementation fits your model of the system. 
+	Do this by 
+	\begin{itemize}
+		\item code review,
+		\item Unit testing and
+		\item debugging.
+	\end{itemize}
+
+	\paragraph{Validate}
+	\label{pgf:performance-evaluation-study-:validate}
+	
+	that the systems model behaves just like the system itself.
+	If the system is not available, compare to related work, do mathematical analysis or test the limitations of the model in order to test edge cases, which outcomes should be clear.
+	
+	
 	
 	
 	
