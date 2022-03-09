@@ -2319,6 +2319,80 @@
 	
 	that the systems model behaves just like the system itself.
 	If the system is not available, compare to related work, do mathematical analysis or test the limitations of the model in order to test edge cases, which outcomes should be clear.
+
+	\paragraph{Experimentation Analysis and Presentation}
+	\label{pgf:performance-evaluation-study-:experimentation-analysis-and-presentation}
+	
+	Use scientific methods\dots
+
+	Do experiment, but only within the bounds that were defined for the model.
+
+	\subsection{Performance Behaviour}
+	\label{ss:discrete-event-simulation:performance-behaviour}
+	
+	Real systems at a certain load perform truely stochastically. 
+	Every measurement is just a snapshot of the system in its current state.
+
+	The real probability distribution is denoted as \( X \sim F_{1}(x) \).
+	The observed probability distribution is denoted as \( Y \sim F_{2}(x) \).
+
+	Thus, to be able to observe the \textit{true} behaviour of your system, multiple simulation runs have to be performed. 
+	From the combined runs, observations can be combined.
+	Only if multiple simulations are performed, the gathered data can approximate \( X \sim Y_\texttt{total} = h( F_{2}(x), \dots F_{n}(x)) \) properly.
+	Only then you are able to claim information about the real system.
+
+	It is also important to carefully select samples that are fit 
+	
+	\subsubsection{Statistical Foundations}
+	\label{sss:performance-behaviour:statistical-foundations}
+		
+	\begin{defi}{Population}
+		The set of all possible observations of the experiment.
+		\tcblower
+		On a die throw: \( \sum = \set{1, \dots, 6}  \).
+	\end{defi}
+
+	\begin{defi}{Population Distribution}
+		Is denoted as \( F \). Describes the relative frequency of of data in the population.
+		\tcblower
+		E.g.: Gaussian distribution.
+	\end{defi}
+
+	\begin{defi}{Empirical Mean}
+		 \[
+			\frac{1}{n}\sum_{i = 1}^n y_i 
+		\]
+	\end{defi}
+
+	\begin{defi}{Quantiles}
+		The \( p \)-quantile (\( p \in [0,1]_\reals )\) are all values, that lie above \( p \cdot 100 \) \% of all values (sorted).
+		\tcblower
+		Median: 0.5-quantile 
+	\end{defi}
+
+	It is important to check, if all \( y_i \)'s are  \textit{independent and identically distributed} (i.i.d).
+	If this is not the case, you have to look out for convergance of the distribution of  \( y_i \).
+
+	Hard question: How to combine all gathered distribution functions into one result?
+	This is only possible, if all used data points are i.i.d..
+	
+	The \textit{transient state} is the state of a prob. distribution, if it has not converged yet.	
+
+	\begin{defi}{Steady State}
+		Let \( F_i(y \mid I) = P(Y_i \mid I) \) be the distribution of  \( Y_i \) given initial conditions  \( I \). 
+		If it exists, then \( F(y) \), \[
+			\lim_{i\rightarrow \infty} F_i(y\mid I) = F(y) ~ \forall I, y
+		\]
+		is called the \textit{steady state distribution} of the process  \( \set{Y_1, Y_{2}, \dots} \).
+	\end{defi}
+	
+		
+	
+	
+	
+		
+	
+	
 	
 	
 	
